@@ -24,19 +24,20 @@ st.markdown("""
     }
     .stopwatch-box {
         font-family: 'Courier New', Courier, monospace;
-        font-size: 48px;
+        font-size: 52px;
         font-weight: bold;
         text-align: center;
         color: #f59e0b;
         background-color: #0f172a;
-        padding: 10px;
+        padding: 12px;
         border-radius: 8px;
         margin-bottom: 20px;
+        border: 2px solid #334155;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🐉 GCD Boat Run Tracker")
+st.title("🐉 GCD Run Tracker")
 
 # --- Initialize States ---
 if "start_time" not in st.session_state:
@@ -46,17 +47,20 @@ if "history" not in st.session_state:
 if "coach_index" not in st.session_state:
     st.session_state.coach_index = None
 
-# --- Live Stopwatch Logic ---
-if st.session_state.start_time is not None and st.session_state.coach_index is None:
-    # If timer started but coach hasn't finished, display an active counting clock
-    elapsed_now = time.time() - st.session_state.start_time
-    m_now = int(elapsed_now // 60)
-    s_now = int(elapsed_now % 60)
-    st.markdown(f'<div class="stopwatch-box">{m_now:02d}:{s_now:02d}</div>', unsafe_allow_html=True)
-    # This button forces Streamlit to rerun the page immediately, creating a live ticking effect
-    st.button("⏱️ Refresh Clock")
-elif st.session_state.start_time is not None and st.session_state.coach_index is not None:
-    st.markdown('<div class="stopwatch-box" style="color:#10b981;">Race Finalized</div>', unsafe_allow_html=True)
+# --- Live-Ticking Stopwatch Fragment ---
+# This decorator keeps the stopwatch ticking every 1 second without reloading the entire app layout
+@st.fragment(run_every=1.0)
+def render_live_stopwatch():
+    if st.session_state.start_time is not None and st.session_state.coach_index is None:
+        elapsed_now = time.time() - st.session_state.start_time
+        m_now = int(elapsed_now // 60)
+        s_now = int(elapsed_now % 60)
+        st.markdown(f'<div class="stopwatch-box">⏱️ {m_now:02d}:{s_now:02d}</div>', unsafe_allow_html=True)
+    elif st.session_state.start_time is not None and st.session_state.coach_index is not None:
+        st.markdown('<div class="stopwatch-box" style="color:#10b981; border-color:#10b981;">🏁 Race Finalized</div>', unsafe_allow_html=True)
+
+# Run the stopwatch fragment
+render_live_stopwatch()
 
 # --- Action Buttons ---
 col1, col2 = st.columns(2)
@@ -74,7 +78,6 @@ with col1:
         st.rerun()
 
 with col2:
-    # Disable coach button if race hasn't started or coach is already logged
     coach_disabled = (st.session_state.start_time is None) or (st.session_state.coach_index is not None)
     if st.button("⏱️ Log Coach", disabled=coach_disabled):
         current_clock = time.time()
@@ -82,7 +85,6 @@ with col2:
             "type": "Coach",
             "abs_time": current_clock
         })
-        # Keep track of where the coach sits in the list
         st.session_state.coach_index = len(st.session_state.history) - 1
         st.rerun()
 
@@ -109,11 +111,9 @@ if st.session_state.start_time is not None:
                 diff = item["abs_time"] - coach_abs_time
                 
                 if diff <= 0:
-                    # Kid beat or tied coach. Strict round up for rewards: 1 sec faster = 1 min reward (-5)
                     minutes_faster = math.ceil(abs(diff) / 60.0)
                     total_burpees -= (minutes_faster * 5)
                 else:
-                    # Kid lost to coach. Strict round up for penalties: 1 sec slower = 1 min penalty (+5)
                     minutes_slower = math.ceil(diff / 60.0)
                     total_burpees += (minutes_slower * 5)
 
@@ -123,7 +123,7 @@ if st.session_state.start_time is not None:
     <div class="metric-box">
         <p style="margin:0; font-size:14px; color:#cbd5e1; font-weight:bold;">TOTAL TEAM BURPEE TALLY</p>
         <h1 style="margin:0; font-size:48px; color:{tally_color};">
-            {total_burpees} Burpees
+            {total_burpees} {'' if total_burpees < 0 else '+'}{total_burpees} Burpees
         </h1>
     </div>
     """, unsafe_allow_html=True)
@@ -133,7 +133,6 @@ if st.session_state.start_time is not None:
     
     kid_counter = 1
     for item in st.session_state.history:
-        # Standard display before coach arrives
         if coach_abs_time == None:
             rel_time = item["abs_time"] - st.session_state.start_time
             m = int(rel_time // 60)
@@ -144,8 +143,6 @@ if st.session_state.start_time is not None:
             else:
                 st.write(f"🏃‍♂️ **Runner #{kid_counter}:** {m:02d}:{s:02d}")
                 kid_counter += 1
-        
-        # Inverted display after coach arrives
         else:
             diff = item["abs_time"] - coach_abs_time
             m_diff = int(abs(diff) // 60)
@@ -156,11 +153,9 @@ if st.session_state.start_time is not None:
                 st.markdown(f"⏱️ <span style='color:#10b981; font-weight:bold;'>[COACH FINISHED BASELINE]</span>", unsafe_allow_html=True)
             else:
                 if diff <= 0:
-                    # Faster than coach
                     mins_rounded = math.ceil(abs(diff) / 60.0)
                     st.write(f"🏃‍♂️ **Runner #{kid_counter}:** {time_str} ahead of coach ({mins_rounded}m faster) 🟢 **-{mins_rounded*5} Burpees**")
                 else:
-                    # Slower than coach
                     mins_rounded = math.ceil(diff / 60.0)
                     st.write(f"🏃‍♂️ **Runner #{kid_counter}:** {time_str} behind coach ({mins_rounded}m slower) 🔴 **+{mins_rounded*5} Burpees**")
                 kid_counter += 1
