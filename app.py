@@ -51,13 +51,23 @@ if "coach_index" not in st.session_state:
 # This decorator keeps the stopwatch ticking every 1 second without reloading the entire app layout
 @st.fragment(run_every=1.0)
 def render_live_stopwatch():
-    if st.session_state.start_time is not None and st.session_state.coach_index is None:
-        elapsed_now = time.time() - st.session_state.start_time
-        m_now = int(elapsed_now // 60)
-        s_now = int(elapsed_now % 60)
-        st.markdown(f'<div class="stopwatch-box">⏱️ {m_now:02d}:{s_now:02d}</div>', unsafe_allow_html=True)
-    elif st.session_state.start_time is not None and st.session_state.coach_index is not None:
-        st.markdown('<div class="stopwatch-box" style="color:#10b981; border-color:#10b981;">🏁 Race Finalized</div>', unsafe_allow_html=True)
+    if st.session_state.start_time is not None:
+        current_now = time.time()
+        
+        # If coach hasn't finished, count up from the first runner
+        if st.session_state.coach_index is None:
+            elapsed_now = current_now - st.session_state.start_time
+            m_now = int(elapsed_now // 60)
+            s_now = int(elapsed_now % 60)
+            st.markdown(f'<div class="stopwatch-box">⏱️ {m_now:02d}:{s_now:02d}</div>', unsafe_allow_html=True)
+            
+        # IF COACH FINISHED: Count up live from the coach's arrival time
+        else:
+            coach_abs_time = st.session_state.history[st.session_state.coach_index]["abs_time"]
+            elapsed_since_coach = current_now - coach_abs_time
+            m_since = int(elapsed_since_coach // 60)
+            s_since = int(elapsed_since_coach % 60)
+            st.markdown(f'<div class="stopwatch-box" style="color:#10b981; border-color:#10b981;">⏱️ {m_since:02d}:{s_since:02d} since Coach</div>', unsafe_allow_html=True)
 
 # Run the stopwatch fragment
 render_live_stopwatch()
@@ -123,7 +133,7 @@ if st.session_state.start_time is not None:
     <div class="metric-box">
         <p style="margin:0; font-size:14px; color:#cbd5e1; font-weight:bold;">TOTAL TEAM BURPEE TALLY</p>
         <h1 style="margin:0; font-size:48px; color:{tally_color};">
-            {total_burpees} {'' if total_burpees < 0 else '+'}{total_burpees} Burpees
+            {'+' if total_burpees > 0 else ''}{total_burpees} Burpees
         </h1>
     </div>
     """, unsafe_allow_html=True)
