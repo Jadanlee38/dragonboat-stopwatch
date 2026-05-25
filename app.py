@@ -42,19 +42,22 @@ st.title("🐉 GCD Run Tracker")
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
 if "history" not in st.session_state:
-    st.session_state.history = []  
+    st.session_state.history = []  # List of dicts: {"type": "Kid"|"Coach", "abs_time": float}
 if "coach_index" not in st.session_state:
     st.session_state.coach_index = None
 
-# --- HTML/JavaScript Local Stopwatch (Zero Network Lag) ---
+# --- HTML/JavaScript Local Stopwatch (Flash-Free & Cellular-Safe) ---
 if st.session_state.start_time is not None:
     current_time_now = time.time()
     
     if st.session_state.coach_index is None:
-        # Count UP from start_time
-        elapsed_baseline = current_time_now - st.session_state.start_time
+        # Pre-calculate accurate starting values for Python to drop into HTML
+        elapsed_baseline = int(current_time_now - st.session_state.start_time)
+        m_start = elapsed_baseline // 60
+        s_start = elapsed_baseline % 60
+        
         js_timer_html = f"""
-        <div class="stopwatch-display" id="local-clock" style="color: #f59e0b;">00:00</div>
+        <div class="stopwatch-display" id="local-clock" style="color: #f59e0b;">⏱️ {m_start:02d}:{s_start:02d}</div>
         <script>
             let elapsed = {elapsed_baseline};
             const clockDiv = document.getElementById('local-clock');
@@ -67,11 +70,14 @@ if st.session_state.start_time is not None:
         </script>
         """
     else:
-        # Coach finished: Count UP from coach timestamp
+        # Coach finished: Count up flash-free from the coach's arrival time
         coach_abs_time = st.session_state.history[st.session_state.coach_index]["abs_time"]
-        elapsed_since_coach = current_time_now - coach_abs_time
+        elapsed_since_coach = int(current_time_now - coach_abs_time)
+        m_start = elapsed_since_coach // 60
+        s_start = elapsed_since_coach % 60
+        
         js_timer_html = f"""
-        <div class="stopwatch-display" id="local-clock" style="color: #10b981; border-color: #10b981;">00:00 since Coach</div>
+        <div class="stopwatch-display" id="local-clock" style="color: #10b981; border-color: #10b981;">⏱️ {m_start:02d}:{s_start:02d} since Coach</div>
         <script>
             let elapsed = {elapsed_since_coach};
             const clockDiv = document.getElementById('local-clock');
@@ -118,7 +124,7 @@ if st.button("🔄 Reset Entire Race"):
     st.session_state.coach_index = None
     st.rerun()
 
-# --- Calculations & Display Feed ---
+# --- Math & Dashboard Calculation ---
 if st.session_state.start_time is not None:
     st.markdown("---")
     total_burpees = 0
@@ -136,6 +142,7 @@ if st.session_state.start_time is not None:
                     minutes_slower = math.ceil(diff / 60.0)
                     total_burpees += (minutes_slower * 5)
 
+    # --- Clean, Flash-Free Single Tally Display ---
     tally_color = "#34d399" if total_burpees <= 0 else "#f87171"
     st.markdown(f"""
     <div class="metric-box">
@@ -146,6 +153,7 @@ if st.session_state.start_time is not None:
     </div>
     """, unsafe_allow_html=True)
 
+    # --- Re-indexed Finish Feed ---
     st.subheader("📋 Official Finish Order")
     kid_counter = 1
     for item in st.session_state.history:
