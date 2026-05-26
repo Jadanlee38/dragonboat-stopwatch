@@ -91,6 +91,18 @@ if st.session_state.start_time is not None:
         """
     st.components.v1.html(js_timer_html, height=100)
 
+# --- Quick Mobile Runner Counter ---
+if st.session_state.start_time is not None:
+    # Separate out kids vs coach to get an accurate runner-only count
+    total_kids_logged = sum(1 for item in st.session_state.history if item["type"] == "Kid")
+    st.markdown(f"""
+    <div style="text-align: center; margin-top: -10px; margin-bottom: 20px;">
+        <span style="font-size: 20px; font-weight: bold; color: #94a3b8; background-color: #334155; padding: 6px 16px; border-radius: 20px;">
+            👟 Runners Logged: {total_kids_logged}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
 # --- Action Buttons ---
 col1, col2 = st.columns(2)
 
